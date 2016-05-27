@@ -13,19 +13,49 @@
 #include <iostream>
 #include <fstream>
 #include <cassert>
+#include <vector>
+#include <list>
 
-#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
+#include <CGAL/Exact_predicates_exact_constructions_kernel.h>
 #include <CGAL/Delaunay_triangulation_2.h>
 #include <CGAL/Voronoi_diagram_2.h>
 #include <CGAL/Delaunay_triangulation_adaptation_traits_2.h>
 #include <CGAL/Delaunay_triangulation_adaptation_policies_2.h>
 
-typedef CGAL::Exact_predicates_inexact_constructions_kernel			K;
+#include <CGAL/Polygon_2.h>
+#include <CGAL/Polygon_with_holes_2.h>
+#include <CGAL/Iso_rectangle_2.h>
+
+#include <CGAL/Boolean_set_operations_2.h>
+
+#include <CGAL/Exact_rational.h>
+#include <CGAL/Extended_cartesian.h>
+#include <CGAL/Nef_polyhedron_2.h>
+
+// typedefs for Voronoi diagram
+typedef CGAL::Exact_predicates_exact_constructions_kernel			K;
 typedef CGAL::Delaunay_triangulation_2<K>							DT;
-typedef K::Point_2					Point_2;
-typedef K::Segment_2				Segment_2;
-typedef K::Ray_2					Ray_2;
-typedef K::Line_2					Line_2;
+typedef CGAL::Delaunay_triangulation_adaptation_traits_2<DT>                 AT;
+typedef CGAL::Delaunay_triangulation_caching_degeneracy_removal_policy_2<DT> AP;
+typedef CGAL::Voronoi_diagram_2<DT, AT, AP>                                  VD;
+
+// typedefs for generic geometry
+typedef K::Point_2													Point_2;
+typedef K::Segment_2												Segment_2;
+typedef K::Ray_2													Ray_2;
+typedef K::Line_2													Line_2;
+typedef VD::Site_2													Site_2;
+typedef VD::Face_handle												Face_handle;
+typedef VD::Halfedge_handle											Halfedge;
+typedef VD::Vertex_handle											Vertex_handle;
+typedef CGAL::Polygon_2<K>											Polygon_2;
+typedef CGAL::Polygon_with_holes_2<K>								Polygon_with_holes_2;
+
+// typedefs for boolean operations
+typedef CGAL::Exact_rational RT;
+typedef CGAL::Extended_cartesian<RT> Extended_kernel;
+typedef CGAL::Nef_polyhedron_2<Extended_kernel> Nef_polyhedron;
+typedef Nef_polyhedron::Line  Line;
 
 // This class is exported from the CVT2D.dll
 class CVT2D_API CCVT2D {
@@ -33,17 +63,34 @@ public:
 	CCVT2D();
 	~CCVT2D();
 
-	void AssignBoundary();
+	void AssignBoundary(const Nef_polyhedron &boundary_);
 
 	void AssignGeneratorNum(int genNum_);
-	void AssignInitGenerators();
+	void AssignInitGenerators(const std::vector< Point_2 > &generators_);
 
 	void SetMaxIteration(int maxIter_);
 	void SetMinMove(double minMove_);
 
-
 	void Execute();
-	
+
+	void PrintGenerators();
+
 private:
-	DT dt;
+	template< typename T >
+	Line ConstructHalfPlane(T p0, T p1)
+	{
+		auto A = p0.y() - p1.y();
+		auto B = p1.x() - p0.x();
+		auto C = p0.x()*p1.y() - p1.x()*p0.y();
+		return Line(CGAL::to_double(A), CGAL::to_double(B), CGAL::to_double(C));
+	}
+
+	Point_2 CalcCentroidOfPolygon(const Polygon_2& polygon);
+
+private:
+	VD vd;
+	std::vector< Point_2 > generators;
+	Nef_polyhedron boundaryNef;
+
+	int maxIter;
 };
