@@ -32,6 +32,15 @@
 #include <CGAL/Extended_cartesian.h>
 #include <CGAL/Nef_polyhedron_2.h>
 
+// includes for convex partition
+#include <CGAL/Partition_traits_2.h>
+#include <CGAL/Partition_is_valid_traits_2.h>
+#include <CGAL/polygon_function_objects.h>
+#include <CGAL/partition_2.h>
+#include <CGAL/point_generators_2.h>
+#include <CGAL/random_polygon_2.h>
+#include <cassert>
+
 // typedefs for Voronoi diagram
 typedef CGAL::Exact_predicates_exact_constructions_kernel			K;
 typedef CGAL::Delaunay_triangulation_2<K>							DT;
@@ -57,6 +66,14 @@ typedef CGAL::Extended_cartesian<RT> Extended_kernel;
 typedef CGAL::Nef_polyhedron_2<Extended_kernel> Nef_polyhedron;
 typedef Nef_polyhedron::Line  Line;
 
+// typedefs for convex partition
+typedef CGAL::Partition_traits_2<K>                         Traits;
+typedef CGAL::Is_convex_2<Traits>                           Is_convex_2;
+typedef Traits::Polygon_2                                   TPolygon_2;
+typedef Traits::Point_2                                     TPoint_2;
+typedef CGAL::Partition_is_valid_traits_2 < Traits, Is_convex_2 > Validity_traits;
+typedef CGAL::Creator_uniform_2<int, TPoint_2>               Creator;
+
 // This class is exported from the CVT2D.dll
 class CVT2D_API CCVT2D {
 public:
@@ -73,7 +90,7 @@ public:
 
 	void Execute();
 
-	void PrintGenerators();
+	void PrintGenerators(std::ostream &output);
 
 private:
 	template< typename T >

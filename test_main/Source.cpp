@@ -24,8 +24,10 @@ bool LoadBoundary(const char *fileName, Nef_polyhedron &boundaryNef)
 		return false;
 	}
 
-	list< Polygon_2 > boundaryOuter, boundaryInner;
-	Polygon_2 outLine;
+	// loading boundary information
+	TPolygon_2 outLine;
+	list< TPolygon_2 > partitionedOuter, partitionedInner;
+	list< TPolygon_2 > boundaryOuter, boundaryInner;
 	string curLine;
 	bool isOuter = true;
 	while (getline(input, curLine))
@@ -43,7 +45,7 @@ bool LoadBoundary(const char *fileName, Nef_polyhedron &boundaryNef)
 			double x, y;
 			stringstream sin;
 			sin << curLine; sin >> x >> y;
-			outLine.push_back(Point_2(x, y));
+			outLine.push_back(TPoint_2(x, y));
 		}
 	}
 	if (!outLine.is_empty())
@@ -52,29 +54,53 @@ bool LoadBoundary(const char *fileName, Nef_polyhedron &boundaryNef)
 		else boundaryInner.push_back(outLine);
 	}
 
-	boundaryNef = Nef_polyhedron(Nef_polyhedron::EMPTY);
+	// partitioning...
+	cout << "Partitioning..." << endl;
 	for (auto &Outer : boundaryOuter)
 	{
-		Nef_polyhedron curPolygon(Nef_polyhedron::COMPLETE);
+		Traits partition_traits;
+		Validity_traits validity_traits;
+		list< TPolygon_2 > curPartition;
+		CGAL::optimal_convex_partition_2(Outer.vertices_begin(), Outer.vertices_end(), back_inserter(curPartition), partition_traits);
+		assert(CGAL::partition_is_valid_2(Outer.vertices_begin(), Outer.vertices_end(), curPartition.begin(), curPartition.end(), validity_traits));
+		partitionedOuter.insert(partitionedOuter.end(), curPartition.begin(), curPartition.end());
+	}
+	for (auto &Inner : boundaryInner)
+	{
+		Traits partition_traits;
+		Validity_traits validity_traits;
+		list< TPolygon_2 > curPartition;
+		CGAL::optimal_convex_partition_2(Inner.vertices_begin(), Inner.vertices_end(), back_inserter(curPartition), partition_traits);
+		assert(CGAL::partition_is_valid_2(Inner.vertices_begin(), Inner.vertices_end(), curPartition.begin(), curPartition.end(), validity_traits));
+		partitionedInner.insert(partitionedInner.end(), curPartition.begin(), curPartition.end());
+	}
+	cout << "Partition result: " << endl;
+	cout << "Outer: " << partitionedOuter.size() << ", Inner: " << partitionedInner.size() << endl;
+
+	boundaryNef = Nef_polyhedron(Nef_polyhedron::EMPTY);
+	for (auto &Outer : partitionedOuter)
+	{
+		auto curPolygon = Nef_polyhedron(Nef_polyhedron::COMPLETE);
 		for (auto v = Outer.vertices_begin(); v != Outer.vertices_end(); ++v)
 		{
-			auto vNext = v; ++vNext; if (vNext == Outer.vertices_end()) vNext = Outer.vertices_begin();
-			// construct line
+			auto vNext = v; ++vNext;
+			if (vNext == Outer.vertices_end()) vNext = Outer.vertices_begin();
 			curPolygon *= Nef_polyhedron(ConstructHalfPlane(*v, *vNext));
 		}
 		boundaryNef += curPolygon;
 	}
-	for (auto &Inner : boundaryInner)
+	for (auto &Inner : partitionedInner)
 	{
-		Nef_polyhedron curPolygon(Nef_polyhedron::COMPLETE);
+		auto curPolygon = Nef_polyhedron(Nef_polyhedron::COMPLETE);
 		for (auto v = Inner.vertices_begin(); v != Inner.vertices_end(); ++v)
 		{
-			auto vNext = v; ++vNext; if (vNext == Inner.vertices_end()) vNext = Inner.vertices_begin();
-			// construct line
+			auto vNext = v; ++vNext;
+			if (vNext == Inner.vertices_end()) vNext = Inner.vertices_begin();
 			curPolygon *= Nef_polyhedron(ConstructHalfPlane(*v, *vNext));
 		}
 		boundaryNef -= curPolygon;
 	}
+
 	return true;
 }
 
@@ -112,11 +138,13 @@ int main(int argc, char **argv)
 	cvt.AssignGeneratorNum(Ng);
 	cvt.AssignInitGenerators(generators);
 
-	cvt.SetMaxIteration(300);
-	cvt.SetMinMove(0.0);
+	cvt.SetMaxIteration(1000);
+	cvt.SetMinMove(1e-7);
 
 	cvt.Execute();
 
-	cvt.PrintGenerators();
+	ofstream output("finalState.txt");
+	cvt.PrintGenerators(output);
+	output.close();
 	return 0;
 }

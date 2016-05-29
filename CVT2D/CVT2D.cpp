@@ -55,6 +55,12 @@ void CCVT2D::Execute()
 		for (auto generator : generators)
 			vd.insert(Site_2(generator.x(), generator.y()));
 		
+		string fileName = "iter_";
+		fileName += to_string(i) + ".txt";
+		ofstream output(fileName);
+		PrintGenerators(output);
+		output.close();
+
 		generators.clear();
 
 		double maxMoveDist = 0.0;
@@ -160,11 +166,11 @@ void CCVT2D::Execute()
 	}
 }
 
-void CCVT2D::PrintGenerators()
+void CCVT2D::PrintGenerators(ostream &output)
 {
 	for (auto p : generators)
 	{
-		cout << CGAL::to_double(p.x()) << " " << CGAL::to_double(p.y()) << endl;
+		output << CGAL::to_double(p.x()) << " " << CGAL::to_double(p.y()) << endl;
 	}
 }
 
