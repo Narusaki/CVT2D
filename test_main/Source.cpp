@@ -107,7 +107,7 @@ bool LoadBoundary(const char *fileName, Nef_polyhedron &boundaryNef)
 void GenInitGenerators(vector< Point_2 > &generators, int Ng)
 {
 	default_random_engine gen;
-	uniform_real_distribution<double> dist(0.0, 200.0);
+	uniform_real_distribution<double> dist(-360.0, 360.0);
 	generators.clear();
 	for (int i = 0; i < Ng; ++i)
 	{

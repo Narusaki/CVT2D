@@ -41,6 +41,13 @@
 #include <CGAL/random_polygon_2.h>
 #include <cassert>
 
+// includes for CDT
+#include <CGAL/Constrained_Delaunay_triangulation_2.h>
+#include <CGAL/Triangulation_face_base_with_info_2.h>
+#include <CGAL/Polygon_2.h>
+
+#include "symbolicc++.h"
+
 // typedefs for Voronoi diagram
 typedef CGAL::Exact_predicates_exact_constructions_kernel			K;
 typedef CGAL::Delaunay_triangulation_2<K>							DT;
@@ -74,6 +81,25 @@ typedef Traits::Point_2                                     TPoint_2;
 typedef CGAL::Partition_is_valid_traits_2 < Traits, Is_convex_2 > Validity_traits;
 typedef CGAL::Creator_uniform_2<int, TPoint_2>               Creator;
 
+// definition & typedefs for polygon triangulation
+struct FaceInfo2
+{
+	FaceInfo2(){}
+	int nesting_level;
+	bool in_domain(){
+		return nesting_level % 2 == 1;
+	}
+};
+
+// typedefs for cdt
+typedef CGAL::Triangulation_vertex_base_2<K>						Vb;
+typedef CGAL::Triangulation_face_base_with_info_2<FaceInfo2, K>		Fbb;
+typedef CGAL::Constrained_triangulation_face_base_2<K, Fbb>			Fb;
+typedef CGAL::Triangulation_data_structure_2<Vb, Fb>				TDS;
+typedef CGAL::Exact_predicates_tag									Itag;
+typedef CGAL::Constrained_Delaunay_triangulation_2<K, TDS, Itag>	CDT;
+typedef CDT::Point													CPoint;
+
 // This class is exported from the CVT2D.dll
 class CVT2D_API CCVT2D {
 public:
@@ -103,6 +129,25 @@ private:
 	}
 
 	Point_2 CalcCentroidOfPolygon(const Polygon_2& polygon);
+
+	K::FT CalcCellEnergy(const Point_2 &center, const Polygon_2 &poly);
+	K::FT CalcEquation(const Point_2 &center,
+		const Point_2 &p0, const Point_2 &p1, 
+		const Point_2 &q0, const Point_2 &q1, 
+		const K::FT &y0, const K::FT &y1);
+	double CalcEquation2(const Point_2 &center,
+		const Point_2 &p0, const Point_2 &p1,
+		const Point_2 &q0, const Point_2 &q1,
+		const K::FT &y0, const K::FT &y1);
+
+	K::FT CalcSubEquation(const Point_2 &center,
+		const K::FT &a0, const K::FT &b0, const K::FT &a1, const K::FT &b1,
+		const K::FT &y0, const K::FT &y1);
+	K::FT CalcSubEquation(const Point_2 &center, const K::FT &a, const K::FT &b, const K::FT &y0, const K::FT &y1);
+	K::FT CalcSubEquation(const Point_2 &center, const K::FT &a, const K::FT &b, const K::FT &y);
+
+	void mark_domains(CDT& ct, CDT::Face_handle start, int index, std::list<CDT::Edge>& border);
+	void mark_domains(CDT& cdt);
 
 private:
 	VD vd;

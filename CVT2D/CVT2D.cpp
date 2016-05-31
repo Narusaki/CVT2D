@@ -64,6 +64,8 @@ void CCVT2D::Execute()
 		generators.clear();
 
 		double maxMoveDist = 0.0;
+		K::FT energy = 0.0;
+		int cnt = 0;
 		for (VD::Site_iterator siteIter = vd.sites_begin(); siteIter != vd.sites_end(); ++siteIter)
 		{
 			// construct each Voronoi cell
@@ -150,7 +152,11 @@ void CCVT2D::Execute()
 				
 				curCentroid = Point_2(curCentroid.x() + c.x(), curCentroid.y() + c.y());
 				totalArea += curArea;
+
+				auto curEnergy = CalcCellEnergy(*siteIter, vorBoundary);
+				if (E.mark(faceIter)) energy += curEnergy; else energy -= curEnergy;
 			}
+			cout << "\r" << ++cnt;
 
 			// move the generator to centroid
 			if (totalArea == 0.0) continue;
@@ -163,7 +169,8 @@ void CCVT2D::Execute()
 			double curMoveDist = sqrt(CGAL::to_double((*siteIter - generators.back()).squared_length()));
 			maxMoveDist = max(maxMoveDist, curMoveDist);
 		}
-		cout << "Max move dist: " << maxMoveDist << ", generator left: " << generators.size() << endl;
+		cout << "Max move dist: " << maxMoveDist << ", generator left: " << generators.size() 
+			<< ", energy: " << CGAL::to_double(energy) << endl;
 	}
 }
 
@@ -189,4 +196,137 @@ Point_2 CCVT2D::CalcCentroidOfPolygon(const Polygon_2& polygon)
 	}
 	Polygon_2::FT A = polygon.area();
 	return Point_2(x / 6.0 / A, y / 6.0 / A);
+}
+
+K::FT CCVT2D::CalcCellEnergy(const Point_2 &center, const Polygon_2 &poly)
+{
+	Point_2 p0, p1, q0, q1;
+	K::FT integral = 0.0;
+
+	// partition the cell into triangles
+	CDT cdt;
+	cdt.insert_constraint(poly.vertices_begin(), poly.vertices_end(), true);
+	mark_domains(cdt);
+
+	// rotate each triangle to align the longest edge with x-axis
+	for (CDT::Finite_faces_iterator fit = cdt.finite_faces_begin(); fit != cdt.finite_faces_end(); ++fit)
+	{
+		if (!fit->info().in_domain()) continue;
+	
+		Point_2 ps[3];
+		for (int i = 0; i < 3; ++i)
+			ps[i] = fit->vertex(i)->point();
+
+		K::Vector_2 dir = ps[1] - ps[0];
+		
+		K::FT cosA = CGAL::to_double(dir.x()) / sqrt(CGAL::to_double(dir.squared_length()));
+		if (cosA > 1.0) cosA = 1.0; else if (cosA < -1.0) cosA = -1.0;
+		K::FT sinA = sqrt(1.0 - CGAL::to_double(cosA*cosA));
+		if (dir.y() < 0.0) sinA *= -1.0;
+
+		Point_2 ps_[3];
+		for (int i = 0; i < 3; ++i)
+			ps_[i] = Point_2(cosA * ps[i].x() + sinA * ps[i].y(), -sinA * ps[i].x() + cosA * ps[i].y());
+		Point_2 center_(cosA * center.x() + sinA * center.y(), -sinA * center.x() + cosA * center.y());
+
+		// integrate
+		K::FT curIntegral = CalcEquation(center_, ps_[2], ps_[0], ps_[2], ps_[1], ps_[0].y(), ps_[2].y());
+		integral += curIntegral > 0.0 ? curIntegral : -curIntegral;
+	}
+
+	return integral;
+}
+
+K::FT CCVT2D::CalcEquation(const Point_2 &center,
+	const Point_2 &p0, const Point_2 &p1,
+	const Point_2 &q0, const Point_2 &q1,
+	const K::FT &y0, const K::FT &y1)
+{
+	K::FT A = p1.y() - p0.y(), B = p0.x() - p1.x(), C = p1.x()*p0.y() - p0.x()*p1.y();
+	K::FT D = q1.y() - q0.y(), E = q0.x() - q1.x(), F = q1.x()*q0.y() - q0.x()*q1.y();
+
+	K::FT a0 = -E / D, b0 = -F / D, a1 = -B / A, b1 = -C / A;
+	return CalcSubEquation(center, a0, b0, a1, b1, y0, y1);
+}
+
+double CCVT2D::CalcEquation2(const Point_2 &center,
+	const Point_2 &p0, const Point_2 &p1,
+	const Point_2 &q0, const Point_2 &q1,
+	const K::FT &y0, const K::FT &y1)
+{
+	K::FT A = p1.y() - p0.y(), B = p0.x() - p1.x(), C = p1.x()*p0.y() - p0.x()*p1.y();
+	K::FT D = q1.y() - q0.y(), E = q0.x() - q1.x(), F = q1.x()*q0.y() - q0.x()*q1.y();
+
+	K::FT a0 = -E / D, b0 = -F / D, a1 = -B / A, b1 = -C / A;
+
+	Symbolic x("x"), y("y");
+	Symbolic f = integrate(
+		integrate(
+		(x - CGAL::to_double(center.x()))*(x - CGAL::to_double(center.x())) + (y - CGAL::to_double(center.y()))*(y - CGAL::to_double(center.y())), 
+		x, 
+		CGAL::to_double(a0)*y + CGAL::to_double(b0), CGAL::to_double(a1)*y + CGAL::to_double(b1)), 
+		y);     // => 1/2*x^(2)+x
+	/*Symbolic f = integrate(integrate(1, x, -sqrt(1-y*y), sqrt(1-y*y)), y);     // => 1/2*x^(2)+x*/
+	return fabs(f[y == CGAL::to_double(y1)] - f[y == CGAL::to_double(y0)]);
+}
+
+K::FT CCVT2D::CalcSubEquation(const Point_2 &center,
+	const K::FT &a0, const K::FT &b0, const K::FT &a1, const K::FT &b1,
+	const K::FT &y0, const K::FT &y1)
+{
+	return CalcSubEquation(center, a1, b1, y0, y1) - CalcSubEquation(center, a0, b0, y0, y1);
+}
+
+K::FT CCVT2D::CalcSubEquation(const Point_2 &center, const K::FT &a, const K::FT &b, const K::FT &y0, const K::FT &y1)
+{
+	return CalcSubEquation(center, a, b, y1) - CalcSubEquation(center, a, b, y0);
+}
+
+K::FT CCVT2D::CalcSubEquation(const Point_2 &center, const K::FT &a, const K::FT &b, const K::FT &y)
+{
+	return (a*a*a / 3.0 + a)*y*y*y*y / 4.0 +
+		(a*a*(b - center.x()) + (b - 2.0*center.y()*a))*y*y*y / 3.0 +
+		(a*(b - center.x())*(b - center.x()) + a*center.y()*center.y() - 2.0*center.y()*b)*y*y / 2.0 +
+		((b - center.x())*(b - center.x())*(b - center.x())/3.0 + b*center.y()*center.y()) * y;
+}
+
+void CCVT2D::mark_domains(CDT& ct, CDT::Face_handle start, int index, std::list<CDT::Edge>& border)
+{
+	if (start->info().nesting_level != -1){
+		return;
+	}
+	std::list<CDT::Face_handle> queue;
+	queue.push_back(start);
+	while (!queue.empty()){
+		CDT::Face_handle fh = queue.front();
+		queue.pop_front();
+		if (fh->info().nesting_level == -1){
+			fh->info().nesting_level = index;
+			for (int i = 0; i < 3; i++){
+				CDT::Edge e(fh, i);
+				CDT::Face_handle n = fh->neighbor(i);
+				if (n->info().nesting_level == -1){
+					if (ct.is_constrained(e)) border.push_back(e);
+					else queue.push_back(n);
+				}
+			}
+		}
+	}
+}
+
+void CCVT2D::mark_domains(CDT& cdt)
+{
+	for (CDT::All_faces_iterator it = cdt.all_faces_begin(); it != cdt.all_faces_end(); ++it){
+		it->info().nesting_level = -1;
+	}
+	std::list<CDT::Edge> border;
+	mark_domains(cdt, cdt.infinite_face(), 0, border);
+	while (!border.empty()){
+		CDT::Edge e = border.front();
+		border.pop_front();
+		CDT::Face_handle n = e.first->neighbor(e.second);
+		if (n->info().nesting_level == -1){
+			mark_domains(cdt, n, e.first->info().nesting_level + 1, border);
+		}
+	}
 }
