@@ -158,7 +158,8 @@ void CCVT2D::Execute()
 // 			cout << totalArea << endl;
 // 			cout << "site: " << siteIter->x() << " " << siteIter->y();
 // 			cout << " -- >";
-// 			cout << generators.back().x() << " " << generators.back().y() << endl;
+// 			cout << generators.back().x() << " " << generators.back().y() << endl;
+
 			double curMoveDist = sqrt(CGAL::to_double((*siteIter - generators.back()).squared_length()));
 			maxMoveDist = max(maxMoveDist, curMoveDist);
 		}
