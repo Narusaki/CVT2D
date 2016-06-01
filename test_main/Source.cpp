@@ -115,13 +115,32 @@ void GenInitGenerators(vector< Point_2 > &generators, int Ng)
 	}
 }
 
+void LoadInitGenerator(const char *fileName, vector< Point_2 > &generators)
+{
+	ifstream input(fileName);
+	if (!input)
+	{
+		cout << "Cannot open initial generators file!" << endl;
+		return;
+	}
+	generators.clear();
+	double x, y;
+	while (input >> x >> y)
+		generators.push_back(Point_2(x, y));
+	input.close();
+}
+
 int main(int argc, char **argv)
 {
 	if (argc < 3)
 	{
-		cout << "USAGE: [.exe] [.boundary] [#generator]" << endl;
+		cout << "USAGE: [.exe] [.boundary] [#generator] [initGenerators]" << endl;
 		return -1;
 	}
+
+	string directory = argv[3];
+	if (directory.find("\\") == string::npos) directory = ".";
+	else directory = directory.substr(0, directory.rfind("\\"));
 
 	Nef_polyhedron boundaryNef;
 	if (!LoadBoundary(argv[1], boundaryNef))
@@ -131,19 +150,23 @@ int main(int argc, char **argv)
 	}
 	int Ng = stoi(argv[2]);
 	vector< Point_2 > generators;
-	GenInitGenerators(generators, Ng);
+	if (argc == 3)
+		GenInitGenerators(generators, Ng);
+	else
+		LoadInitGenerator(argv[3], generators);
 
 	CCVT2D cvt;
 	cvt.AssignBoundary(boundaryNef);
 	cvt.AssignGeneratorNum(Ng);
 	cvt.AssignInitGenerators(generators);
 
-	cvt.SetMaxIteration(1000);
-	cvt.SetMinMove(1e-7);
+	cvt.SetMaxIteration(2000);
+	cvt.SetMinEnergyChange(0.000001);
+	cvt.SetOutputDirectory(directory);
 
 	cvt.Execute();
 
-	ofstream output("finalState.txt");
+	ofstream output(directory+"\\finalState.txt");
 	cvt.PrintGenerators(output);
 	output.close();
 	return 0;

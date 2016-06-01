@@ -112,7 +112,8 @@ public:
 	void AssignInitGenerators(const std::vector< Point_2 > &generators_);
 
 	void SetMaxIteration(int maxIter_);
-	void SetMinMove(double minMove_);
+	void SetMinEnergyChange(double minEnergyChange_);
+	void SetOutputDirectory(string directory_) { directory = directory_; }
 
 	void Execute();
 
@@ -155,4 +156,7 @@ private:
 	Nef_polyhedron boundaryNef;
 
 	int maxIter;
+	double minEnergyChange;
+
+	string directory;
 };

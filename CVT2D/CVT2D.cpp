@@ -39,14 +39,15 @@ void CCVT2D::SetMaxIteration(int maxIter_)
 	maxIter = maxIter_;
 }
 
-void CCVT2D::SetMinMove(double minMove_)
+void CCVT2D::SetMinEnergyChange(double minEnergyChange_)
 {
-
+	minEnergyChange = minEnergyChange_;
 }
 
 
 void CCVT2D::Execute()
 {
+	K::FT prevEnergy = 0.0;
 	for (int i = 0; i < maxIter; ++i)
 	{
 		cout << "Iteration " << i << endl;
@@ -55,7 +56,7 @@ void CCVT2D::Execute()
 		for (auto generator : generators)
 			vd.insert(Site_2(generator.x(), generator.y()));
 		
-		string fileName = "iter_";
+		string fileName = directory + "\\iter_";
 		fileName += to_string(i) + ".txt";
 		ofstream output(fileName);
 		PrintGenerators(output);
@@ -156,7 +157,6 @@ void CCVT2D::Execute()
 				auto curEnergy = CalcCellEnergy(*siteIter, vorBoundary);
 				if (E.mark(faceIter)) energy += curEnergy; else energy -= curEnergy;
 			}
-			cout << "\r" << ++cnt;
 
 			// move the generator to centroid
 			if (totalArea == 0.0) continue;
@@ -171,6 +171,9 @@ void CCVT2D::Execute()
 		}
 		cout << "Max move dist: " << maxMoveDist << ", generator left: " << generators.size() 
 			<< ", energy: " << CGAL::to_double(energy) << endl;
+		if (fabs(CGAL::to_double((energy - prevEnergy) / max(energy, prevEnergy))) < minEnergyChange)
+			break;
+		prevEnergy = energy;
 	}
 }
 
