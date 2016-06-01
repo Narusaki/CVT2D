@@ -58,7 +58,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>$(CGAL_DIR)\auxiliary\gmp\lib\libmpfr-4.lib;$(CGAL_DIR)\auxiliary\gmp\lib\libgmp-10.lib;..\$(Configuration)\CVT2D.lib;SymbolicC++3.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(CGAL_DIR)/build/lib;$(CGAL_DIR)/build/lib/$(Configuration);$(BOOST_LIBRARYDIR);$(BOOST_LIBRARYDIR)/$(Configuration);H:\Graphics\SymbolicC++3-3.35-vc\SymbolicC++3\Static;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(CGAL_DIR)/build/lib;$(CGAL_DIR)/build/lib/$(Configuration);$(BOOST_LIBRARYDIR);$(BOOST_LIBRARYDIR)/$(Configuration);H:\Graphics\SymbolicC++3-3.35-vc\SymbolicC++3\Static_Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">

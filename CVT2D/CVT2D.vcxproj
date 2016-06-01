@@ -56,7 +56,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(CGAL_DIR)/build/lib;$(CGAL_DIR)/build/lib/$(Configuration);$(BOOST_LIBRARYDIR);$(BOOST_LIBRARYDIR)/$(Configuration);H:\Graphics\SymbolicC++3-3.35-vc\SymbolicC++3\Static;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(CGAL_DIR)/build/lib;$(CGAL_DIR)/build/lib/$(Configuration);$(BOOST_LIBRARYDIR);$(BOOST_LIBRARYDIR)/$(Configuration);H:\Graphics\SymbolicC++3-3.35-vc\SymbolicC++3\Static_Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>$(CGAL_DIR)\auxiliary\gmp\lib\libmpfr-4.lib;$(CGAL_DIR)\auxiliary\gmp\lib\libgmp-10.lib;SymbolicC++3.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>

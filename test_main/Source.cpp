@@ -104,14 +104,43 @@ bool LoadBoundary(const char *fileName, Nef_polyhedron &boundaryNef)
 	return true;
 }
 
-void GenInitGenerators(vector< Point_2 > &generators, int Ng)
+void GenInitGenerators(const Nef_polyhedron& boundaryNef, vector< Point_2 > &generators, int Ng)
 {
-	default_random_engine gen;
-	uniform_real_distribution<double> dist(-360.0, 360.0);
 	generators.clear();
+
+	// construct bounding box of boundary
+	typedef Nef_polyhedron::Explorer Explorer;
+	Explorer E = boundaryNef.explorer();
+	auto faceIter = E.faces_begin(); ++faceIter; ++faceIter;
+	Explorer::Halfedge_around_vertex_const_circulator heIter(E.halfedge(faceIter));
+	auto heStartIter = heIter;
+	double xmin = 1e30, xmax = -1e30, ymin = 1e30, ymax = -1e30;
+
+	for (; faceIter != E.faces_end(); ++faceIter)
+	{
+		do
+		{
+			if (E.is_standard(E.target(heIter)) && E.is_standard(E.source(heIter)))
+			{
+				auto p = E.point(E.source(heIter));
+				xmin = min(CGAL::to_double(xmin), CGAL::to_double(p.x()));
+				xmax = max(CGAL::to_double(xmax), CGAL::to_double(p.x()));
+				ymin = min(CGAL::to_double(ymin), CGAL::to_double(p.y()));
+				ymax = max(CGAL::to_double(ymax), CGAL::to_double(p.y()));
+			}
+			heIter = heIter->next();
+		} while (heIter != heStartIter);
+	}
+
+	default_random_engine gen;
+	uniform_real_distribution<double> distX(xmin, xmax);
+	uniform_real_distribution<double> distY(ymin, ymax);
 	for (int i = 0; i < Ng; ++i)
 	{
-		generators.push_back(Point_2(dist(gen), dist(gen)));
+		auto p = Nef_polyhedron::Point(distX(gen), distY(gen));
+		if (boundaryNef.contains(boundaryNef.locate(p)))
+			generators.push_back(Point_2(p));
+		else --i;
 	}
 }
 
@@ -138,8 +167,8 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
-	string directory = argv[3];
-	if (directory.find("\\") == string::npos) directory = ".";
+	string directory;
+	if (argc == 3 || directory.find("\\") == string::npos) directory = ".";
 	else directory = directory.substr(0, directory.rfind("\\"));
 
 	Nef_polyhedron boundaryNef;
@@ -151,7 +180,7 @@ int main(int argc, char **argv)
 	int Ng = stoi(argv[2]);
 	vector< Point_2 > generators;
 	if (argc == 3)
-		GenInitGenerators(generators, Ng);
+		GenInitGenerators(boundaryNef, generators, Ng);
 	else
 		LoadInitGenerator(argv[3], generators);
 
