@@ -112,12 +112,12 @@ void GenInitGenerators(const Nef_polyhedron& boundaryNef, vector< Point_2 > &gen
 	typedef Nef_polyhedron::Explorer Explorer;
 	Explorer E = boundaryNef.explorer();
 	auto faceIter = E.faces_begin(); ++faceIter; ++faceIter;
-	Explorer::Halfedge_around_vertex_const_circulator heIter(E.halfedge(faceIter));
-	auto heStartIter = heIter;
 	double xmin = 1e30, xmax = -1e30, ymin = 1e30, ymax = -1e30;
 
 	for (; faceIter != E.faces_end(); ++faceIter)
 	{
+		Explorer::Halfedge_around_vertex_const_circulator heIter(E.halfedge(faceIter));
+		auto heStartIter = heIter;
 		do
 		{
 			if (E.is_standard(E.target(heIter)) && E.is_standard(E.source(heIter)))

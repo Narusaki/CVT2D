@@ -128,14 +128,14 @@ void CCVT2D::Execute()
 			typedef Nef_polyhedron::Explorer Explorer;
 			Explorer E = vorCellNef.explorer();
 			auto faceIter = E.faces_begin(); ++faceIter; ++faceIter;
-			Explorer::Halfedge_around_vertex_const_circulator heIter(E.halfedge(faceIter));
-			auto heStartIter = heIter;
 
 			Point_2 curCentroid(0.0, 0.0);
 			K::FT totalArea = 0.0;
 
 			for (; faceIter != E.faces_end(); ++faceIter)
 			{
+				Explorer::Halfedge_around_vertex_const_circulator heIter(E.halfedge(faceIter));
+				auto heStartIter = heIter;
 				Polygon_2 vorBoundary;
 				do
 				{
