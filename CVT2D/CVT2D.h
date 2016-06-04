@@ -159,4 +159,7 @@ private:
 	double minEnergyChange;
 
 	string directory;
+
+public:
+	bool isSilent = false;
 };

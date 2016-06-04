@@ -50,17 +50,21 @@ void CCVT2D::Execute()
 	K::FT prevEnergy = 0.0;
 	for (int i = 0; i < maxIter; ++i)
 	{
-		cout << "Iteration " << i << endl;
+		if (!isSilent)
+			cout << "Iteration " << i << endl;
 		// construct delaunay triangulation
 		vd.clear();
 		for (auto generator : generators)
 			vd.insert(Site_2(generator.x(), generator.y()));
 		
-		string fileName = directory + "\\iter_";
-		fileName += to_string(i) + ".txt";
-		ofstream output(fileName);
-		PrintGenerators(output);
-		output.close();
+		if (!isSilent)
+		{
+			string fileName = directory + "\\iter_";
+			fileName += to_string(i) + ".txt";
+			ofstream output(fileName);
+			PrintGenerators(output);
+			output.close();
+		}
 
 		generators.clear();
 
@@ -169,8 +173,11 @@ void CCVT2D::Execute()
 			double curMoveDist = sqrt(CGAL::to_double((*siteIter - generators.back()).squared_length()));
 			maxMoveDist = max(maxMoveDist, curMoveDist);
 		}
-		cout << "Max move dist: " << maxMoveDist << ", generator left: " << generators.size() 
-			<< ", energy: " << CGAL::to_double(energy) << endl;
+		if (!isSilent)
+		{
+			cout << "Max move dist: " << maxMoveDist << ", generator left: " << generators.size()
+				<< ", energy: " << CGAL::to_double(energy) << endl;
+		}
 		if (fabs(CGAL::to_double((energy - prevEnergy) / max(energy, prevEnergy))) < minEnergyChange)
 			break;
 		prevEnergy = energy;

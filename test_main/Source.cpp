@@ -185,6 +185,7 @@ int main(int argc, char **argv)
 		LoadInitGenerator(argv[3], generators);
 
 	CCVT2D cvt;
+	cvt.isSilent = false;
 	cvt.AssignBoundary(boundaryNef);
 	cvt.AssignGeneratorNum(Ng);
 	cvt.AssignInitGenerators(generators);
