@@ -152,7 +152,6 @@ private:
 
 private:
 	VD vd;
-	std::vector< Point_2 > generators;
 	Nef_polyhedron boundaryNef;
 
 	int maxIter;
@@ -162,4 +161,5 @@ private:
 
 public:
 	bool isSilent = false;
+	std::vector< Point_2 > generators;
 };
