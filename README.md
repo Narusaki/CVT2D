@@ -13,10 +13,10 @@ A Lloyd algorithm implementation constructing Centroidal Voronoi Diagram in 2D. 
 </div>
 
 <div align="center">
-<img src="example/shrimp_10.png" width="200" align="center"/>
-<img src="example/shrimp_20.png" width="200" align="center"/>
-<img src="example/shrimp_50.png" width="200" align="center"/>
-<img src="example/shrimp_100.png" width="200" align="center"/>
+<img src="example/shrimp_10.PNG" width="200" align="center"/>
+<img src="example/shrimp_20.PNG" width="200" align="center"/>
+<img src="example/shrimp_50.PNG" width="200" align="center"/>
+<img src="example/shrimp_100.PNG" width="200" align="center"/>
 <br>
-<caption align="bottom">Figure 2. Results on a shrimp-shaped constraint with different number of generators.</caption>
+<caption align="bottom">Figure 2. Results on a shrimp-shaped constraint with 10, 20, 50 and 100 generators.</caption>
 </div>
