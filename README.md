@@ -1,5 +1,5 @@
 # CVT2D
-A Lloyd algorithm implementation constructing Centroidal Voronoi Diagram in 2D. It uses the Voronoi\_diagram\_2 and Nef\_Polyhedron\_2 package in CGAL and works on arbitrary boundary contraints (i.e. whether it is convex or concave, connected or multi-connected, genus-1 or multi-genus)
+A Lloyd algorithm implementation constructing Centroidal Voronoi Diagram in 2D. It uses the Voronoi\_diagram\_2 and Nef\_Polyhedron\_2 package in CGAL and works on arbitrary boundary contraints (i.e. whether it is convex or concave, connected or multi-connected, genus-0 or multi-genuses).
 
 ## Example
 

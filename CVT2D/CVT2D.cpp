@@ -27,6 +27,7 @@ void CCVT2D::AssignGeneratorNum(int genNum_)
 {
 	generators.clear();
 	generators.resize(genNum_);
+	Ng = genNum_;
 }
 
 void CCVT2D::AssignInitGenerators(const vector< Point_2 > &generators_)
@@ -48,16 +49,53 @@ void CCVT2D::SetMinEnergyChange(double minEnergyChange_)
 void CCVT2D::Execute()
 {
 	K::FT prevEnergy = 0.0;
+	int processRank, processSize;
+	MPI_Status s;
+
+	MPI_Comm_rank(MPI_COMM_WORLD, &processRank);
+	MPI_Comm_size(MPI_COMM_WORLD, &processSize);
+
+	if (processRank == 0)
+		cout << "# of invoked processes: " << processSize << endl;
+
 	for (int i = 0; i < maxIter; ++i)
 	{
-		if (!isSilent)
+		if (!isSilent && processRank == 0)
 			cout << "Iteration " << i << endl;
 		// construct delaunay triangulation
 		vd.clear();
+
+		// process 0 broadcasts generators and energies
+		if (processRank == 0)
+		{
+			double *d_generators = new double[Ng * 2];
+			for (int i = 0; i < Ng; ++i)
+			{
+				d_generators[i * 2] = CGAL::to_double(generators[i].x());
+				d_generators[i * 2 + 1] = CGAL::to_double(generators[i].y());
+			}
+			for (int i = 1; i < processSize; ++i)
+				MPI_Ssend(d_generators, Ng * 2, MPI_DOUBLE, i, 0, MPI_COMM_WORLD);
+
+			delete[] d_generators;
+		}
+		else
+		{
+			double *d_generators = new double[Ng * 2];
+			MPI_Recv(d_generators, Ng * 2, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, &s);
+			generators.clear();
+			for (int i = 0; i < Ng; ++i)
+				generators.push_back(Point_2(d_generators[i * 2], d_generators[i * 2 + 1]));
+			delete[] d_generators;
+		}
+
 		for (auto generator : generators)
 			vd.insert(Site_2(generator.x(), generator.y()));
+
+		// distribute generators
+		int genPerProcess = (Ng + processSize - 1) / processSize;
 		
-		if (!isSilent)
+		if (!isSilent && processRank == 0)
 		{
 			string fileName = directory + "\\iter_";
 			fileName += to_string(i) + ".txt";
@@ -65,14 +103,19 @@ void CCVT2D::Execute()
 			PrintGenerators(output);
 			output.close();
 		}
-
-		generators.clear();
-
+		vector< Point_2 > centroids;
 		double maxMoveDist = 0.0;
 		K::FT energy = 0.0;
 		int cnt = 0;
+		clock_t start = clock();
 		for (VD::Site_iterator siteIter = vd.sites_begin(); siteIter != vd.sites_end(); ++siteIter)
 		{
+			if (cnt < processRank * genPerProcess || cnt >= (processRank + 1) * genPerProcess)
+			{
+				++cnt; continue;
+			}
+			++cnt;
+			/*if (cnt++ % size != processRank) continue;*/
 			// construct each Voronoi cell
 			VD::Locate_result locRes = vd.locate(*siteIter);
 			Face_handle *cell = get<Face_handle>(&locRes);
@@ -164,23 +207,81 @@ void CCVT2D::Execute()
 
 			// move the generator to centroid
 			if (totalArea == 0.0) continue;
-			generators.push_back(Point_2(curCentroid.x() / totalArea, curCentroid.y() / totalArea));
-// 			cout << totalArea << endl;
-// 			cout << "site: " << siteIter->x() << " " << siteIter->y();
-// 			cout << " -- >";
-// 			cout << generators.back().x() << " " << generators.back().y() << endl;
+			centroids.push_back(Point_2(curCentroid.x() / totalArea, curCentroid.y() / totalArea));
 
-			double curMoveDist = sqrt(CGAL::to_double((*siteIter - generators.back()).squared_length()));
+			double curMoveDist = sqrt(CGAL::to_double((*siteIter - centroids.back()).squared_length()));
 			maxMoveDist = max(maxMoveDist, curMoveDist);
 		}
-		if (!isSilent)
+		clock_t end = clock();
+
+		clock_t start2 = clock();
+		// each process (except 0) sends back generated generators
+		if (processRank != 0)
 		{
-			cout << "Max move dist: " << maxMoveDist << ", generator left: " << generators.size()
-				<< ", energy: " << CGAL::to_double(energy) << endl;
+			double *d_centroids = new double[genPerProcess * 2];
+			double *d_energy = new double;
+			for (int i = 0; i < centroids.size(); ++i)
+			{
+				d_centroids[i * 2] = CGAL::to_double(centroids[i].x());
+				d_centroids[i * 2 + 1] = CGAL::to_double(centroids[i].y());
+			}
+			*d_energy = CGAL::to_double(energy);
+			// send to process 0
+			MPI_Ssend(d_centroids, genPerProcess * 2, MPI_DOUBLE, 0, processRank, MPI_COMM_WORLD);
+			MPI_Ssend(d_energy, 1, MPI_DOUBLE, 0, processRank+processSize, MPI_COMM_WORLD);
+			delete[] d_centroids;
+			delete[] d_energy;
 		}
+		else
+		{
+			double *d_centroids = new double[genPerProcess * processSize * 2];
+			double *d_energy = new double[processSize];
+			// receive from process 1 to size-1
+			for (int i = 1; i < processSize; ++i)
+			{
+				MPI_Recv(d_centroids + i * genPerProcess * 2, genPerProcess * 2, MPI_DOUBLE, i, i, MPI_COMM_WORLD, &s);
+				MPI_Recv(d_energy + i, 1, MPI_DOUBLE, i, i + processSize, MPI_COMM_WORLD, &s);
+			}
+			
+			// reorganize into generators
+			for (int i = genPerProcess; i < Ng; ++i)
+			{
+				Point_2 p(d_centroids[i * 2], d_centroids[i * 2 + 1]);
+				centroids.push_back(p);
+			}
+			for (int i = 1; i < processSize; ++i) energy += d_energy[i];
+			delete[] d_centroids;
+			delete[] d_energy;
+		}
+
+		// process 0 broadcasts energy
+		if (processRank == 0)
+		{
+			double d_energy = CGAL::to_double(energy);
+			for (int i = 1; i < processSize; ++i)
+				MPI_Ssend(&d_energy, 1, MPI_DOUBLE, i, 1, MPI_COMM_WORLD);
+		}
+		else
+		{
+			double d_energy;
+			MPI_Recv(&d_energy, 1, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD, &s);
+			energy = d_energy;
+		}
+
+		clock_t end2 = clock();
+		if (!isSilent && processRank == 0)
+		{
+			cout << "Max move dist: " << maxMoveDist 
+				<< ", generator left: " << centroids.size()
+				<< ", energy: " << CGAL::to_double(energy) 
+				<< ", time: " << (double)(end - start) / (double)CLOCKS_PER_SEC
+				<< ", communicating time: " << (double)(end2 - start2) / (double)CLOCKS_PER_SEC << endl;
+		}
+
 		if (fabs(CGAL::to_double((energy - prevEnergy) / max(energy, prevEnergy))) < minEnergyChange)
 			break;
 		prevEnergy = energy;
+		generators = centroids;
 	}
 }
 

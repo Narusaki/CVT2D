@@ -17,10 +17,13 @@ Line ConstructHalfPlane(T p0, T p1)
 
 bool LoadBoundary(const char *fileName, Nef_polyhedron &boundaryNef)
 {
+	int processRank;
+	MPI_Comm_rank(MPI_COMM_WORLD, &processRank);
 	ifstream input(fileName);
 	if (!input)
 	{
-		cout << "Cannot open boundary file!" << endl;
+		if (processRank == 0)
+			cout << "Cannot open boundary file!" << endl;
 		return false;
 	}
 
@@ -55,7 +58,8 @@ bool LoadBoundary(const char *fileName, Nef_polyhedron &boundaryNef)
 	}
 
 	// partitioning...
-	cout << "Partitioning..." << endl;
+	if (processRank == 0)
+		cout << "Partitioning..." << endl;
 	for (auto &Outer : boundaryOuter)
 	{
 		Traits partition_traits;
@@ -74,8 +78,11 @@ bool LoadBoundary(const char *fileName, Nef_polyhedron &boundaryNef)
 		assert(CGAL::partition_is_valid_2(Inner.vertices_begin(), Inner.vertices_end(), curPartition.begin(), curPartition.end(), validity_traits));
 		partitionedInner.insert(partitionedInner.end(), curPartition.begin(), curPartition.end());
 	}
-	cout << "Partition result: " << endl;
-	cout << "Outer: " << partitionedOuter.size() << ", Inner: " << partitionedInner.size() << endl;
+	if (processRank == 0)
+	{
+		cout << "Partition result: " << endl;
+		cout << "Outer: " << partitionedOuter.size() << ", Inner: " << partitionedInner.size() << endl;
+	}
 
 	boundaryNef = Nef_polyhedron(Nef_polyhedron::EMPTY);
 	for (auto &Outer : partitionedOuter)
@@ -167,14 +174,25 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
-	string directory;
-	if (argc == 3 || directory.find("\\") == string::npos) directory = ".";
-	else directory = directory.substr(0, directory.rfind("\\"));
+	MPI_Init(&argc, &argv);
 
+	string directory;
+	if (argc == 3)
+		directory = ".";
+	else
+	{
+		directory = argv[3];
+		if (directory.find("\\") == string::npos) directory = ".";
+		else directory = directory.substr(0, directory.rfind("\\"));
+	}
+		
+	int processRank;
+	MPI_Comm_rank(MPI_COMM_WORLD, &processRank);
 	Nef_polyhedron boundaryNef;
 	if (!LoadBoundary(argv[1], boundaryNef))
 	{
-		cout << "Cannot load boundary file!" << endl;
+		if (processRank == 0)
+			cout << "Cannot load boundary file!" << endl;
 		return -2;
 	}
 	int Ng = stoi(argv[2]);
@@ -196,8 +214,15 @@ int main(int argc, char **argv)
 
 	cvt.Execute();
 
-	ofstream output(directory+"\\finalState.txt");
-	cvt.PrintGenerators(output);
-	output.close();
+	if (processRank == 0)
+	{
+		ofstream output(directory + "\\finalState.txt");
+		cvt.PrintGenerators(output);
+		output.close();
+	}
+
+	MPI_Barrier(MPI_COMM_WORLD);
+
+	MPI_Finalize();
 	return 0;
 }

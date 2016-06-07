@@ -48,6 +48,9 @@
 
 #include "symbolicc++.h"
 
+// include for MPI
+#include "mpi.h"
+
 // typedefs for Voronoi diagram
 typedef CGAL::Exact_predicates_exact_constructions_kernel			K;
 typedef CGAL::Delaunay_triangulation_2<K>							DT;
@@ -156,6 +159,7 @@ private:
 
 	int maxIter;
 	double minEnergyChange;
+	int Ng;
 
 	string directory;
 
