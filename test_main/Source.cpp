@@ -208,8 +208,8 @@ int main(int argc, char **argv)
 	cvt.AssignGeneratorNum(Ng);
 	cvt.AssignInitGenerators(generators);
 
-	cvt.SetMaxIteration(2000);
-	cvt.SetMinEnergyChange(0.000001);
+	cvt.SetMaxIteration(100);
+	cvt.SetMinEnergyChange(0.00000);
 	cvt.SetOutputDirectory(directory);
 
 	cvt.Execute();

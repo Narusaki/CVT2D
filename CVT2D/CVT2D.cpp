@@ -57,6 +57,7 @@ void CCVT2D::Execute()
 
 	if (processRank == 0)
 		cout << "# of invoked processes: " << processSize << endl;
+	clock_t totalTime = 0;
 
 	for (int i = 0; i < maxIter; ++i)
 	{
@@ -269,6 +270,8 @@ void CCVT2D::Execute()
 		}
 
 		clock_t end2 = clock();
+
+		totalTime += (end - start) + (end2 - start2);
 		if (!isSilent && processRank == 0)
 		{
 			cout << "Max move dist: " << maxMoveDist 
@@ -283,6 +286,8 @@ void CCVT2D::Execute()
 		prevEnergy = energy;
 		generators = centroids;
 	}
+	if (!isSilent && processRank == 0)
+		cout << "Total time: " << (double)totalTime / (double)CLOCKS_PER_SEC << endl;
 }
 
 void CCVT2D::PrintGenerators(ostream &output)

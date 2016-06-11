@@ -84,13 +84,13 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;CVT2D_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(CGAL_DIR)\include;$(CGAL_DIR)\build\include;$(CGAL_DIR)\auxiliary\gmp\include;$(BOOST_INCLUDEDIR);H:\Graphics\SymbolicC++3-3.35-vc\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(CGAL_DIR)\include;$(CGAL_DIR)\build\include;$(CGAL_DIR)\auxiliary\gmp\include;$(BOOST_INCLUDEDIR);H:\Graphics\SymbolicC++3-3.35-vc\include;C:\Program Files\Microsoft Compute Cluster Pack\Include;C:\Program Files\Microsoft Compute Cluster Pack\Include\i386;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(CGAL_DIR)/build/lib;$(CGAL_DIR)/build/lib/$(Configuration);$(BOOST_LIBRARYDIR);$(BOOST_LIBRARYDIR)/$(Configuration);H:\Graphics\SymbolicC++3-3.35-vc\SymbolicC++3\Static_Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>$(CGAL_DIR)\auxiliary\gmp\lib\libmpfr-4.lib;$(CGAL_DIR)\auxiliary\gmp\lib\libgmp-10.lib;SymbolicC++3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(CGAL_DIR)/build/lib;$(CGAL_DIR)/build/lib/$(Configuration);$(BOOST_LIBRARYDIR);$(BOOST_LIBRARYDIR)/$(Configuration);C:\Program Files\Microsoft Compute Cluster Pack\Lib\i386;H:\Graphics\SymbolicC++3-3.35-vc\SymbolicC++3\Static_Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>$(CGAL_DIR)\auxiliary\gmp\lib\libmpfr-4.lib;$(CGAL_DIR)\auxiliary\gmp\lib\libgmp-10.lib;SymbolicC++3.lib;msmpi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -116,15 +116,15 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;CVT2D_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(CGAL_DIR)\include;$(CGAL_DIR)\build\include;$(CGAL_DIR)\auxiliary\gmp\include;$(BOOST_INCLUDEDIR);H:\Graphics\SymbolicC++3-3.35-vc\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(CGAL_DIR)\include;$(CGAL_DIR)\build\include;$(CGAL_DIR)\auxiliary\gmp\include;$(BOOST_INCLUDEDIR);H:\Graphics\SymbolicC++3-3.35-vc\include;C:\Program Files\Microsoft Compute Cluster Pack\Include;C:\Program Files\Microsoft Compute Cluster Pack\Include\i386;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>$(CGAL_DIR)/build/lib;$(CGAL_DIR)/build/lib/$(Configuration);$(BOOST_LIBRARYDIR);$(BOOST_LIBRARYDIR)/$(Configuration);H:\Graphics\SymbolicC++3-3.35-vc\SymbolicC++3\Static;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>$(CGAL_DIR)\auxiliary\gmp\lib\libmpfr-4.lib;$(CGAL_DIR)\auxiliary\gmp\lib\libgmp-10.lib;SymbolicC++3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(CGAL_DIR)/build/lib;$(CGAL_DIR)/build/lib/$(Configuration);$(BOOST_LIBRARYDIR);$(BOOST_LIBRARYDIR)/$(Configuration);C:\Program Files\Microsoft Compute Cluster Pack\Lib\i386;H:\Graphics\SymbolicC++3-3.35-vc\SymbolicC++3\Static;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>$(CGAL_DIR)\auxiliary\gmp\lib\libmpfr-4.lib;$(CGAL_DIR)\auxiliary\gmp\lib\libgmp-10.lib;SymbolicC++3.lib;msmpi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
