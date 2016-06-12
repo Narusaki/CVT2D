@@ -195,7 +195,7 @@ void CCVT2D::Execute()
 					heIter = heIter->next();
 				} while (heIter != heStartIter);
 
-				Point_2 c = CalcCentroidOfPolygon(vorBoundary);
+				Point_2 c = CalcCentroidOfPolygon2(vorBoundary);
 				K::FT curArea = (E.mark(faceIter) ? vorBoundary.area() : -vorBoundary.area());
 				c = Point_2(curArea * c.x(), curArea * c.y());
 				
@@ -346,18 +346,18 @@ Point_2 CCVT2D::CalcCentroidOfPolygon2(const Polygon_2& polygon)
 		for (int i = 0; i < 3; ++i)
 			ps_[i] = Point_2(cosA * ps[i].x() + sinA * ps[i].y(), -sinA * ps[i].x() + cosA * ps[i].y());
 
-		auto curCentroid = CalcTriangleCentroid(ps_[0], ps_[1], ps_[2], CGAL::to_double(cosA), -CGAL::to_double(sinA));
+		auto res = CalcTriangleCentroid(ps_[0], ps_[1], ps_[2], CGAL::to_double(cosA), CGAL::to_double(sinA));
+		auto curCentroid = res.first; double mass = res.second;
 		curCentroid = Point_2(cosA * curCentroid.x() - sinA * curCentroid.y(), sinA * curCentroid.x() + cosA * curCentroid.y());
 
-		double weight = fabs(CGAL::to_double(dir.x()*dir2.y() - dir.y()*dir2.x()) / 2.0);
-		centroid = Point_2(centroid.x() + weight * curCentroid.x(), centroid.y() + weight * curCentroid.y());
-		totalWeight += weight;
+		centroid = Point_2(centroid.x() + mass * curCentroid.x(), centroid.y() + mass * curCentroid.y());
+		totalWeight += mass;
 	}
 	centroid = Point_2(centroid.x() / totalWeight, centroid.y() / totalWeight);
 	return centroid;
 }
 
-Point_2 CCVT2D::CalcTriangleCentroid(const Point_2 &p0, const Point_2 &p1, const Point_2 &p2, 
+pair<Point_2, double> CCVT2D::CalcTriangleCentroid(const Point_2 &p0, const Point_2 &p1, const Point_2 &p2,
 	double cosA, double sinA)
 {
 	K::FT A = p1.y() - p2.y(), B = p2.x() - p1.x(), C = p1.x()*p2.y() - p2.x()*p1.y();
@@ -365,54 +365,64 @@ Point_2 CCVT2D::CalcTriangleCentroid(const Point_2 &p0, const Point_2 &p1, const
 
 	K::FT a0 = -E / D, b0 = -F / D, a1 = -B / A, b1 = -C / A;
 
-	Symbolic x("x"), y("y");
-	Symbolic nominator = integrate(
-		integrate(
-		x, 
-		x,
-		CGAL::to_double(a0)*y + CGAL::to_double(b0), CGAL::to_double(a1)*y + CGAL::to_double(b1)),
-		y); 
+	// integrate mass
+	int nargout = 1;
+	char funcCStr[255], yMinFuncStrC[255], yMaxFuncStrC[255];
+	sprintf_s(funcCStr, "exp(-((%f.*x+%f.*y).^2+(%f.*x+%f.*y).^2)./16000)",
+		cosA, -sinA, sinA, cosA);
+	/*sprintf_s(funcCStr, "ones(size(x,1), size(x,2))");*/
+	sprintf_s(yMinFuncStrC, "%f.*y+%f", CGAL::to_double(a0), CGAL::to_double(b0));
+	sprintf_s(yMaxFuncStrC, "%f.*y+%f", CGAL::to_double(a1), CGAL::to_double(b1));
+	/*cout << funcCStr << endl << yMinFuncStrC << endl << yMaxFuncStrC << endl;*/
 
-	Symbolic denominator = integrate(
-		integrate(
-		1.0, 
-		x,
-		CGAL::to_double(a0)*y + CGAL::to_double(b0), CGAL::to_double(a1)*y + CGAL::to_double(b1)),
-		y);
+	mwArray res(1, 1, mxDOUBLE_CLASS);
+	mwArray funcStr(funcCStr), yMinFuncStr(yMinFuncStrC), yMaxFuncStr(yMaxFuncStrC);
+	mwArray xmin(1, 1, mxDOUBLE_CLASS), xmax(1, 1, mxDOUBLE_CLASS);
+	xmin(1, 1) = CGAL::to_double(p0.y()), xmax(1, 1) = CGAL::to_double(p2.y());
+	/*cout << "Calculating centroid..." << endl;*/
+	multiIntegral(nargout, res, funcStr, xmin, xmax, yMinFuncStr, yMaxFuncStr);
+	/*cout << "Done" << endl;*/
+	double mass = res.Get(1, 1);
 
-	double xc = (nominator[y == CGAL::to_double(p2.y())] - nominator[y == CGAL::to_double(p0.y())]) /
-		(denominator[y == CGAL::to_double(p2.y())] - denominator[y == CGAL::to_double(p0.y())]);
-// 	cout << CGAL::to_double(a0) << " " << CGAL::to_double(b0) << endl;
-// 	cout << CGAL::to_double(a1) << " " << CGAL::to_double(b1) << endl;
-// 	cout << CGAL::to_double(p0.y()) << " " << CGAL::to_double(p2.y()) << endl;
-// 	cout << (nominator[y == CGAL::to_double(p2.y())] - nominator[y == CGAL::to_double(p0.y())]) << endl;
-// 	cout << (denominator[y == CGAL::to_double(p2.y())] - denominator[y == CGAL::to_double(p0.y())]) << endl;
-// 	cout << xc << " " << CGAL::to_double((p0.x() + p1.x() + p2.x()) / 3.0) << endl;
-// 	system("pause");
+	// integrate x
 	
-	nominator = integrate(
-		integrate(
-		y,
-		x,
-		CGAL::to_double(a0)*y + CGAL::to_double(b0), CGAL::to_double(a1)*y + CGAL::to_double(b1)),
-		y);
+	sprintf_s(funcCStr, "exp(-((%f.*x+%f.*y).^2+(%f.*x+%f.*y).^2)./16000).*x",
+		cosA, -sinA, sinA, cosA);
+	/*sprintf_s(funcCStr, "x");*/
 
-	denominator = integrate(
-		integrate(
-		1.0,
-		x,
-		CGAL::to_double(a0)*y + CGAL::to_double(b0), CGAL::to_double(a1)*y + CGAL::to_double(b1)),
-		y);
+	funcStr = mwArray(funcCStr); 
 
-	double yc = (nominator[y == CGAL::to_double(p2.y())] - nominator[y == CGAL::to_double(p0.y())]) /
-		(denominator[y == CGAL::to_double(p2.y())] - denominator[y == CGAL::to_double(p0.y())]);
-// 	cout << (nominator[y == CGAL::to_double(p2.y())] - nominator[y == CGAL::to_double(p0.y())]) << endl;
-// 	cout << (denominator[y == CGAL::to_double(p2.y())] - denominator[y == CGAL::to_double(p0.y())]) << endl;
-// 	cout << yc << " " << CGAL::to_double((p0.y() + p1.y() + p2.y()) / 3.0) << endl;
+	multiIntegral(nargout, res, funcStr, xmin, xmax, yMinFuncStr, yMaxFuncStr);
+
+	double xc = res.Get(1, 1);
+
+	// integrate y
+	sprintf_s(funcCStr, "exp(-((%f.*x+%f.*y).^2+(%f.*x+%f.*y).^2)./16000).*y",
+		cosA, -sinA, sinA, cosA);
+	/*sprintf_s(funcCStr, "y");*/
+	funcStr = mwArray(funcCStr);
+	
+	multiIntegral(nargout, res, funcStr, xmin, xmax, yMinFuncStr, yMaxFuncStr);
+
+	double yc = res.Get(1, 1);
+
+	xc /= mass; yc /= mass;
+
+// 	double tp0x = CGAL::to_double(p0.x()), tp0y = CGAL::to_double(p0.y());
+// 	double tp1x = CGAL::to_double(p1.x()), tp1y = CGAL::to_double(p1.y());
+// 	double tp2x = CGAL::to_double(p2.x()), tp2y = CGAL::to_double(p2.y());
+// 
+// 	cout << "(" << tp0x << ", " << tp0y << ")" << endl;
+// 	cout << "(" << tp1x << ", " << tp1y << ")" << endl;
+// 	cout << "(" << tp2x << ", " << tp2y << ")" << endl;
+// 	cout << "centroid: (" << xc << ", " << yc << ")" << endl;
+// 	double t0 = (tp0x - xc)*(tp1y - yc) - (tp1x - xc)*(tp0y - yc);
+// 	double t1 = (tp1x - xc)*(tp2y - yc) - (tp2x - xc)*(tp1y - yc);
+// 	double t2 = (tp2x - xc)*(tp0y - yc) - (tp0x - xc)*(tp2y - yc);
+// 	cout << t0 / (t0 + t1 + t2) << ", " << t1 / (t0 + t1 + t2) << ", " << t2 / (t0 + t1 + t2) << endl;
 // 	system("pause");
 
-
-	return Point_2(xc, yc);
+	return make_pair(Point_2(xc, yc), mass);
 }
 
 K::FT CCVT2D::CalcCellEnergy(const Point_2 &center, const Polygon_2 &poly)
@@ -447,7 +457,7 @@ K::FT CCVT2D::CalcCellEnergy(const Point_2 &center, const Polygon_2 &poly)
 		Point_2 center_(cosA * center.x() + sinA * center.y(), -sinA * center.x() + cosA * center.y());
 
 		// integrate
-		K::FT curIntegral = CalcEquation(center_, ps_[2], ps_[0], ps_[2], ps_[1], ps_[0].y(), ps_[2].y());
+		K::FT curIntegral = CalcEquation2(center_, ps_[2], ps_[0], ps_[2], ps_[1], ps_[0].y(), ps_[2].y());
 		integral += curIntegral > 0.0 ? curIntegral : -curIntegral;
 	}
 
@@ -471,20 +481,34 @@ double CCVT2D::CalcEquation2(const Point_2 &center,
 	const Point_2 &q0, const Point_2 &q1,
 	const K::FT &y0, const K::FT &y1)
 {
+	// NOTE: to avoid redundant modification of the Matlab .dll, a shift to center is adopted
+	// which makes the calling of multiIntegra() a little bit complicated.
+
 	K::FT A = p1.y() - p0.y(), B = p0.x() - p1.x(), C = p1.x()*p0.y() - p0.x()*p1.y();
 	K::FT D = q1.y() - q0.y(), E = q0.x() - q1.x(), F = q1.x()*q0.y() - q0.x()*q1.y();
 
 	K::FT a0 = -E / D, b0 = -F / D, a1 = -B / A, b1 = -C / A;
 
-	Symbolic x("x"), y("y");
-	Symbolic f = integrate(
-		integrate(
-		(x - CGAL::to_double(center.x()))*(x - CGAL::to_double(center.x())) + (y - CGAL::to_double(center.y()))*(y - CGAL::to_double(center.y())), 
-		x, 
-		CGAL::to_double(a0)*y + CGAL::to_double(b0), CGAL::to_double(a1)*y + CGAL::to_double(b1)), 
-		y);     // => 1/2*x^(2)+x
-	/*Symbolic f = integrate(integrate(1, x, -sqrt(1-y*y), sqrt(1-y*y)), y);     // => 1/2*x^(2)+x*/
-	return fabs(f[y == CGAL::to_double(y1)] - f[y == CGAL::to_double(y0)]);
+	// shift integral interval
+	int nargout = 1;
+	char funcCStr[255], yMinFuncStrC[255], yMaxFuncStrC[255];
+	sprintf_s(funcCStr, "exp(-(x.*x+y.*y)./16000).*((x-%f).^2+(y-%f).^2)",
+		CGAL::to_double(center.x()), CGAL::to_double(center.y()));
+// 	sprintf_s(funcCStr, "(x-%f).^2+(y-%f).^2",
+// 		CGAL::to_double(center.x()), CGAL::to_double(center.y()));
+	
+	sprintf_s(yMinFuncStrC, "%f.*y+%f", CGAL::to_double(a0), CGAL::to_double(b0));
+	sprintf_s(yMaxFuncStrC, "%f.*y+%f", CGAL::to_double(a1), CGAL::to_double(b1));
+	/*cout << funcCStr << endl << yMinFuncStrC << endl << yMaxFuncStrC << endl;*/
+
+	mwArray res(1, 1, mxDOUBLE_CLASS);
+	mwArray funcStr(funcCStr), yMinFuncStr(yMinFuncStrC), yMaxFuncStr(yMaxFuncStrC);
+	mwArray xmin(1, 1, mxDOUBLE_CLASS), xmax(1, 1, mxDOUBLE_CLASS);
+	xmin(1, 1) = CGAL::to_double(y0), xmax(1, 1) = CGAL::to_double(y1);
+	/*cout << "Calculating energy..." << endl;*/
+	multiIntegral(nargout, res, funcStr, xmin, xmax, yMinFuncStr, yMaxFuncStr);
+	/*cout << "Done" << endl;*/
+	return res.Get(1, 1);
 }
 
 K::FT CCVT2D::CalcSubEquation(const Point_2 &center,

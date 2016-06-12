@@ -15,6 +15,7 @@
 #include <cassert>
 #include <vector>
 #include <list>
+#include <string>
 
 #include <CGAL/Exact_predicates_exact_constructions_kernel.h>
 #include <CGAL/Delaunay_triangulation_2.h>
@@ -46,10 +47,12 @@
 #include <CGAL/Triangulation_face_base_with_info_2.h>
 #include <CGAL/Polygon_2.h>
 
-#include "symbolicc++.h"
-
 // include for MPI
 #include "mpi.h"
+
+// includes for Matlab
+#include "mclmcr.h" 
+#include "multiIntegral.h"
 
 // typedefs for Voronoi diagram
 typedef CGAL::Exact_predicates_exact_constructions_kernel			K;
@@ -116,7 +119,7 @@ public:
 
 	void SetMaxIteration(int maxIter_);
 	void SetMinEnergyChange(double minEnergyChange_);
-	void SetOutputDirectory(string directory_) { directory = directory_; }
+	void SetOutputDirectory(std::string directory_) { directory = directory_; }
 
 	void Execute();
 
@@ -134,7 +137,7 @@ private:
 
 	Point_2 CalcCentroidOfPolygon(const Polygon_2& polygon);
 	Point_2 CalcCentroidOfPolygon2(const Polygon_2& polygon);
-	Point_2 CalcTriangleCentroid(const Point_2 &p0, const Point_2 &p1, const Point_2 &p2, double cosA, double sinA);
+	std::pair<Point_2, double> CalcTriangleCentroid(const Point_2 &p0, const Point_2 &p1, const Point_2 &p2, double cosA, double sinA);
 
 
 	K::FT CalcCellEnergy(const Point_2 &center, const Polygon_2 &poly);
@@ -163,7 +166,7 @@ private:
 	double minEnergyChange;
 	int Ng;
 
-	string directory;
+	std::string directory;
 
 public:
 	bool isSilent = false;

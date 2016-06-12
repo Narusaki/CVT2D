@@ -27,6 +27,9 @@
     <ClInclude Include="CVT2D.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="multiIntegral.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
