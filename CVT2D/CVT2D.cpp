@@ -314,6 +314,107 @@ Point_2 CCVT2D::CalcCentroidOfPolygon(const Polygon_2& polygon)
 	return Point_2(x / 6.0 / A, y / 6.0 / A);
 }
 
+Point_2 CCVT2D::CalcCentroidOfPolygon2(const Polygon_2& polygon)
+{
+	Point_2 p0, p1, q0, q1;
+	Point_2 centroid(0.0, 0.0);
+
+	// partition the cell into triangles
+	CDT cdt;
+	cdt.insert_constraint(polygon.vertices_begin(), polygon.vertices_end(), true);
+	mark_domains(cdt);
+
+	// rotate each triangle to align the longest edge with x-axis
+	double totalWeight = 0.0;
+	for (CDT::Finite_faces_iterator fit = cdt.finite_faces_begin(); fit != cdt.finite_faces_end(); ++fit)
+	{
+		if (!fit->info().in_domain()) continue;
+
+		Point_2 ps[3];
+		for (int i = 0; i < 3; ++i)
+			ps[i] = fit->vertex(i)->point();
+
+		K::Vector_2 dir = ps[1] - ps[0];
+		K::Vector_2 dir2 = ps[2] - ps[0];
+
+		K::FT cosA = CGAL::to_double(dir.x()) / sqrt(CGAL::to_double(dir.squared_length()));
+		if (cosA > 1.0) cosA = 1.0; else if (cosA < -1.0) cosA = -1.0;
+		K::FT sinA = sqrt(1.0 - CGAL::to_double(cosA*cosA));
+		if (dir.y() < 0.0) sinA *= -1.0;
+
+		Point_2 ps_[3];
+		for (int i = 0; i < 3; ++i)
+			ps_[i] = Point_2(cosA * ps[i].x() + sinA * ps[i].y(), -sinA * ps[i].x() + cosA * ps[i].y());
+
+		auto curCentroid = CalcTriangleCentroid(ps_[0], ps_[1], ps_[2], CGAL::to_double(cosA), -CGAL::to_double(sinA));
+		curCentroid = Point_2(cosA * curCentroid.x() - sinA * curCentroid.y(), sinA * curCentroid.x() + cosA * curCentroid.y());
+
+		double weight = fabs(CGAL::to_double(dir.x()*dir2.y() - dir.y()*dir2.x()) / 2.0);
+		centroid = Point_2(centroid.x() + weight * curCentroid.x(), centroid.y() + weight * curCentroid.y());
+		totalWeight += weight;
+	}
+	centroid = Point_2(centroid.x() / totalWeight, centroid.y() / totalWeight);
+	return centroid;
+}
+
+Point_2 CCVT2D::CalcTriangleCentroid(const Point_2 &p0, const Point_2 &p1, const Point_2 &p2, 
+	double cosA, double sinA)
+{
+	K::FT A = p1.y() - p2.y(), B = p2.x() - p1.x(), C = p1.x()*p2.y() - p2.x()*p1.y();
+	K::FT D = p0.y() - p2.y(), E = p2.x() - p0.x(), F = p0.x()*p2.y() - p2.x()*p0.y();
+
+	K::FT a0 = -E / D, b0 = -F / D, a1 = -B / A, b1 = -C / A;
+
+	Symbolic x("x"), y("y");
+	Symbolic nominator = integrate(
+		integrate(
+		x, 
+		x,
+		CGAL::to_double(a0)*y + CGAL::to_double(b0), CGAL::to_double(a1)*y + CGAL::to_double(b1)),
+		y); 
+
+	Symbolic denominator = integrate(
+		integrate(
+		1.0, 
+		x,
+		CGAL::to_double(a0)*y + CGAL::to_double(b0), CGAL::to_double(a1)*y + CGAL::to_double(b1)),
+		y);
+
+	double xc = (nominator[y == CGAL::to_double(p2.y())] - nominator[y == CGAL::to_double(p0.y())]) /
+		(denominator[y == CGAL::to_double(p2.y())] - denominator[y == CGAL::to_double(p0.y())]);
+// 	cout << CGAL::to_double(a0) << " " << CGAL::to_double(b0) << endl;
+// 	cout << CGAL::to_double(a1) << " " << CGAL::to_double(b1) << endl;
+// 	cout << CGAL::to_double(p0.y()) << " " << CGAL::to_double(p2.y()) << endl;
+// 	cout << (nominator[y == CGAL::to_double(p2.y())] - nominator[y == CGAL::to_double(p0.y())]) << endl;
+// 	cout << (denominator[y == CGAL::to_double(p2.y())] - denominator[y == CGAL::to_double(p0.y())]) << endl;
+// 	cout << xc << " " << CGAL::to_double((p0.x() + p1.x() + p2.x()) / 3.0) << endl;
+// 	system("pause");
+	
+	nominator = integrate(
+		integrate(
+		y,
+		x,
+		CGAL::to_double(a0)*y + CGAL::to_double(b0), CGAL::to_double(a1)*y + CGAL::to_double(b1)),
+		y);
+
+	denominator = integrate(
+		integrate(
+		1.0,
+		x,
+		CGAL::to_double(a0)*y + CGAL::to_double(b0), CGAL::to_double(a1)*y + CGAL::to_double(b1)),
+		y);
+
+	double yc = (nominator[y == CGAL::to_double(p2.y())] - nominator[y == CGAL::to_double(p0.y())]) /
+		(denominator[y == CGAL::to_double(p2.y())] - denominator[y == CGAL::to_double(p0.y())]);
+// 	cout << (nominator[y == CGAL::to_double(p2.y())] - nominator[y == CGAL::to_double(p0.y())]) << endl;
+// 	cout << (denominator[y == CGAL::to_double(p2.y())] - denominator[y == CGAL::to_double(p0.y())]) << endl;
+// 	cout << yc << " " << CGAL::to_double((p0.y() + p1.y() + p2.y()) / 3.0) << endl;
+// 	system("pause");
+
+
+	return Point_2(xc, yc);
+}
+
 K::FT CCVT2D::CalcCellEnergy(const Point_2 &center, const Polygon_2 &poly)
 {
 	Point_2 p0, p1, q0, q1;

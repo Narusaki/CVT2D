@@ -133,6 +133,9 @@ private:
 	}
 
 	Point_2 CalcCentroidOfPolygon(const Polygon_2& polygon);
+	Point_2 CalcCentroidOfPolygon2(const Polygon_2& polygon);
+	Point_2 CalcTriangleCentroid(const Point_2 &p0, const Point_2 &p1, const Point_2 &p2, double cosA, double sinA);
+
 
 	K::FT CalcCellEnergy(const Point_2 &center, const Polygon_2 &poly);
 	K::FT CalcEquation(const Point_2 &center,
@@ -143,7 +146,6 @@ private:
 		const Point_2 &p0, const Point_2 &p1,
 		const Point_2 &q0, const Point_2 &q1,
 		const K::FT &y0, const K::FT &y1);
-
 	K::FT CalcSubEquation(const Point_2 &center,
 		const K::FT &a0, const K::FT &b0, const K::FT &a1, const K::FT &b1,
 		const K::FT &y0, const K::FT &y1);
