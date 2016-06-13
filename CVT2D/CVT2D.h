@@ -54,6 +54,10 @@
 #include "mclmcr.h" 
 #include "multiIntegral.h"
 
+#define DENSITY_FUNC1
+ /*#define DENSITY_FUNC2*/
+ /*#define DENSITY_FUNC3*/
+
 // typedefs for Voronoi diagram
 typedef CGAL::Exact_predicates_exact_constructions_kernel			K;
 typedef CGAL::Delaunay_triangulation_2<K>							DT;
@@ -148,7 +152,8 @@ private:
 	double CalcEquation2(const Point_2 &center,
 		const Point_2 &p0, const Point_2 &p1,
 		const Point_2 &q0, const Point_2 &q1,
-		const K::FT &y0, const K::FT &y1);
+		const K::FT &y0, const K::FT &y1, 
+		double cosA, double sinA);
 	K::FT CalcSubEquation(const Point_2 &center,
 		const K::FT &a0, const K::FT &b0, const K::FT &a1, const K::FT &b1,
 		const K::FT &y0, const K::FT &y1);

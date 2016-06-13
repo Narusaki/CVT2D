@@ -367,10 +367,26 @@ pair<Point_2, double> CCVT2D::CalcTriangleCentroid(const Point_2 &p0, const Poin
 
 	// integrate mass
 	int nargout = 1;
-	char funcCStr[255], yMinFuncStrC[255], yMaxFuncStrC[255];
-	sprintf_s(funcCStr, "exp(-((%f.*x+%f.*y).^2+(%f.*x+%f.*y).^2)./16000)",
+	char funcCStr[4096], yMinFuncStrC[255], yMaxFuncStrC[255];
+#if defined(DENSITY_FUNC1)
+	double xs[4] = { 300, 160, 20, -120 };
+	string funcStrc = "";
+	for (int i = 0; i < 16; ++i)
+	{
+		char tmpStr[255];
+		sprintf_s(tmpStr, "1e0.*exp(-((%f.*x+%f.*y-%f).^2+(%f.*x+%f.*y-%f).^2)./16000) + ",
+			cosA, -sinA, - xs[i % 4], sinA, cosA, -xs[i / 4]);
+		funcStrc += tmpStr;
+	}
+	funcStrc = funcStrc.substr(0, funcStrc.size() - 3);
+	/*funcStrc += "+1";*/
+	sprintf_s(funcCStr, funcStrc.c_str());
+#elif defined(DENSITY_FUNC2)
+	sprintf_s(funcCStr, "1e0.*exp(-((%f.*x+%f.*y).^2+(%f.*x+%f.*y).^2)./16000)",
 		cosA, -sinA, sinA, cosA);
-	/*sprintf_s(funcCStr, "ones(size(x,1), size(x,2))");*/
+#elif defined(DENSITY_FUNC3)
+	sprintf_s(funcCStr, "ones(size(x,1), size(x,2))");
+#endif
 	sprintf_s(yMinFuncStrC, "%f.*y+%f", CGAL::to_double(a0), CGAL::to_double(b0));
 	sprintf_s(yMaxFuncStrC, "%f.*y+%f", CGAL::to_double(a1), CGAL::to_double(b1));
 	/*cout << funcCStr << endl << yMinFuncStrC << endl << yMaxFuncStrC << endl;*/
@@ -385,10 +401,14 @@ pair<Point_2, double> CCVT2D::CalcTriangleCentroid(const Point_2 &p0, const Poin
 	double mass = res.Get(1, 1);
 
 	// integrate x
-	
-	sprintf_s(funcCStr, "exp(-((%f.*x+%f.*y).^2+(%f.*x+%f.*y).^2)./16000).*x",
+#if defined(DENSITY_FUNC1)
+	sprintf_s(funcCStr, ("(" + funcStrc + ").*x").c_str());
+#elif defined(DENSITY_FUNC2)
+	sprintf_s(funcCStr, "1e0.*exp(-((%f.*x+%f.*y).^2+(%f.*x+%f.*y).^2)./16000).*x",
 		cosA, -sinA, sinA, cosA);
-	/*sprintf_s(funcCStr, "x");*/
+#elif defined(DENSITY_FUNC3)
+	sprintf_s(funcCStr, "x");
+#endif
 
 	funcStr = mwArray(funcCStr); 
 
@@ -397,9 +417,14 @@ pair<Point_2, double> CCVT2D::CalcTriangleCentroid(const Point_2 &p0, const Poin
 	double xc = res.Get(1, 1);
 
 	// integrate y
-	sprintf_s(funcCStr, "exp(-((%f.*x+%f.*y).^2+(%f.*x+%f.*y).^2)./16000).*y",
+#if defined(DENSITY_FUNC1)
+	sprintf_s(funcCStr, ("(" + funcStrc + ").*y").c_str());
+#elif defined(DENSITY_FUNC2)
+	sprintf_s(funcCStr, "1e0.*exp(-((%f.*x+%f.*y).^2+(%f.*x+%f.*y).^2)./16000).*y",
 		cosA, -sinA, sinA, cosA);
-	/*sprintf_s(funcCStr, "y");*/
+#elif defined(DENSITY_FUNC3)
+	sprintf_s(funcCStr, "y");
+#endif
 	funcStr = mwArray(funcCStr);
 	
 	multiIntegral(nargout, res, funcStr, xmin, xmax, yMinFuncStr, yMaxFuncStr);
@@ -457,7 +482,8 @@ K::FT CCVT2D::CalcCellEnergy(const Point_2 &center, const Polygon_2 &poly)
 		Point_2 center_(cosA * center.x() + sinA * center.y(), -sinA * center.x() + cosA * center.y());
 
 		// integrate
-		K::FT curIntegral = CalcEquation2(center_, ps_[2], ps_[0], ps_[2], ps_[1], ps_[0].y(), ps_[2].y());
+		K::FT curIntegral = CalcEquation2(center_, ps_[2], ps_[0], ps_[2], ps_[1], ps_[0].y(), ps_[2].y(), 
+			CGAL::to_double(cosA), CGAL::to_double(sinA));
 		integral += curIntegral > 0.0 ? curIntegral : -curIntegral;
 	}
 
@@ -479,7 +505,8 @@ K::FT CCVT2D::CalcEquation(const Point_2 &center,
 double CCVT2D::CalcEquation2(const Point_2 &center,
 	const Point_2 &p0, const Point_2 &p1,
 	const Point_2 &q0, const Point_2 &q1,
-	const K::FT &y0, const K::FT &y1)
+	const K::FT &y0, const K::FT &y1, 
+	double cosA, double sinA)
 {
 	// NOTE: to avoid redundant modification of the Matlab .dll, a shift to center is adopted
 	// which makes the calling of multiIntegra() a little bit complicated.
@@ -491,11 +518,28 @@ double CCVT2D::CalcEquation2(const Point_2 &center,
 
 	// shift integral interval
 	int nargout = 1;
-	char funcCStr[255], yMinFuncStrC[255], yMaxFuncStrC[255];
-	sprintf_s(funcCStr, "exp(-(x.*x+y.*y)./16000).*((x-%f).^2+(y-%f).^2)",
+	char funcCStr[4096], yMinFuncStrC[255], yMaxFuncStrC[255];
+#if defined(DENSITY_FUNC1)
+	double xs[4] = { 300, 160, 20, -120 };
+	string funcStrc = "";
+	for (int i = 0; i < 16; ++i)
+	{
+		char tmpStr[255];
+		sprintf_s(tmpStr, "1e0.*exp(-((%f.*x+%f.*y-%f).^2+(%f.*x+%f.*y-%f).^2)./16000) + ",
+			cosA, -sinA, -xs[i % 4], sinA, cosA, -xs[i / 4]);
+		funcStrc += tmpStr;
+	}
+	funcStrc = funcStrc.substr(0, funcStrc.size() - 3);
+	/*funcStrc += "+1";*/
+	funcStrc = "(" + funcStrc + ")" + ".*((x - %f).^2 + (y - %f).^2)";
+	sprintf_s(funcCStr, funcStrc.c_str(), CGAL::to_double(center.x()), CGAL::to_double(center.y()));
+#elif defined(DENSITY_FUNC2)
+	sprintf_s(funcCStr, "1e0.*exp(-((%f.*x+%f.*y).^2+(%f.*x+%f.*y).^2)./16000).*((x-%f).^2+(y-%f).^2)",
+		cosA, -sinA, sinA, cosA, CGAL::to_double(center.x()), CGAL::to_double(center.y()));
+#elif defined(DENSITY_FUNC3)
+	sprintf_s(funcCStr, "(x-%f).^2+(y-%f).^2",
 		CGAL::to_double(center.x()), CGAL::to_double(center.y()));
-// 	sprintf_s(funcCStr, "(x-%f).^2+(y-%f).^2",
-// 		CGAL::to_double(center.x()), CGAL::to_double(center.y()));
+#endif
 	
 	sprintf_s(yMinFuncStrC, "%f.*y+%f", CGAL::to_double(a0), CGAL::to_double(b0));
 	sprintf_s(yMaxFuncStrC, "%f.*y+%f", CGAL::to_double(a1), CGAL::to_double(b1));
