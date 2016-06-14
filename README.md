@@ -2,8 +2,15 @@
 A Lloyd algorithm implementation constructing Centroidal Voronoi Diagram in 2D. It uses the Voronoi\_diagram\_2 and Nef\_Polyhedron\_2 package in CGAL and works on arbitrary boundary contraints (i.e. whether it is convex or concave, connected or multi-connected, genus-0 or multi-genuses).
 
 This is a new branch that use Matlab to deal with non-constant density function.
-## Example
 
+## Prerequisites
+This program uses the following tools:
+
+1. CGAL 4.6, which is used to generate Voronoi diagram and execute intersection between Voronoi cells and boundaries;
+2. Matlab, which is used to calculate the value of the energy function of CVT, and the cetroid of each Voronoi cell. For the const density case, a straight forward way is also used to accelerate the calculatino speed of the above two;
+3. MS-MPI, which is used to parallelize the updating procedure of the generators.
+
+## Example
 <div align="center">
 <img src="example/circle_400.000000_8.png" width="200" align="center"/>
 <img src="example/circle_400.000000_100.PNG" width="200" align="center"/>
@@ -27,6 +34,8 @@ Since the Nef\_polyhedron\_2 class in CGAL is currently not thread-safe, it is h
 
 The performance on the disk boundary (approximated by 100 segments) with 1,000 generators and 100 iterations varing along with the number of processes is shown in the following:
 
+<center>
+
 | # of process   | time (sec.)   |
 | -------------  | ------------- |
 | 1              | 3843.4        |
@@ -36,3 +45,5 @@ The performance on the disk boundary (approximated by 100 segments) with 1,000 g
 | 16             | 314.4         |
 | 32             | 180.1         |
 | 64             | 169.3         |
+
+</center>
