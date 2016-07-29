@@ -55,7 +55,7 @@ void CCVT2D::Execute()
 	MPI_Comm_rank(MPI_COMM_WORLD, &processRank);
 	MPI_Comm_size(MPI_COMM_WORLD, &processSize);
 
-	if (processRank == 0)
+	if (processRank == 0 && !isSilent)
 		cout << "# of invoked processes: " << processSize << endl;
 	clock_t totalTime = 0;
 
@@ -108,6 +108,7 @@ void CCVT2D::Execute()
 		double maxMoveDist = 0.0;
 		K::FT energy = 0.0;
 		int cnt = 0;
+		clock_t energyCalcTime = 0, centroidCalcTime = 0;
 		clock_t start = clock();
 		for (VD::Site_iterator siteIter = vd.sites_begin(); siteIter != vd.sites_end(); ++siteIter)
 		{
@@ -195,14 +196,21 @@ void CCVT2D::Execute()
 					heIter = heIter->next();
 				} while (heIter != heStartIter);
 
-				Point_2 c = CalcCentroidOfPolygon2(vorBoundary);
+				clock_t start = clock();
+				Point_2 c = CalcCentroidOfPolygon(vorBoundary);
+				clock_t end = clock();
+				centroidCalcTime += end - start;
+
 				K::FT curArea = (E.mark(faceIter) ? vorBoundary.area() : -vorBoundary.area());
 				c = Point_2(curArea * c.x(), curArea * c.y());
 				
 				curCentroid = Point_2(curCentroid.x() + c.x(), curCentroid.y() + c.y());
 				totalArea += curArea;
 
+				start = clock();
 				auto curEnergy = CalcCellEnergy(*siteIter, vorBoundary);
+				end = clock();
+				energyCalcTime += end - start;
 				if (E.mark(faceIter)) energy += curEnergy; else energy -= curEnergy;
 			}
 
@@ -274,10 +282,12 @@ void CCVT2D::Execute()
 		totalTime += (end - start) + (end2 - start2);
 		if (!isSilent && processRank == 0)
 		{
-			cout << "Max move dist: " << maxMoveDist 
+			cout << "Max move dist: " << maxMoveDist
 				<< ", generator left: " << centroids.size()
-				<< ", energy: " << CGAL::to_double(energy) 
+				<< ", energy: " << CGAL::to_double(energy)
 				<< ", time: " << (double)(end - start) / (double)CLOCKS_PER_SEC
+				<< ", energy_calc_time: " << (double)(energyCalcTime) / (double)CLOCKS_PER_SEC 
+				<< ", centroid_calc_time: " << (double)(centroidCalcTime) / (double)CLOCKS_PER_SEC 
 				<< ", communicating time: " << (double)(end2 - start2) / (double)CLOCKS_PER_SEC << endl;
 		}
 
@@ -386,6 +396,30 @@ pair<Point_2, double> CCVT2D::CalcTriangleCentroid(const Point_2 &p0, const Poin
 		cosA, -sinA, sinA, cosA);
 #elif defined(DENSITY_FUNC3)
 	sprintf_s(funcCStr, "ones(size(x,1), size(x,2))");
+#elif defined(DENSITY_FUNC4)
+	double xs[2] = { 250, -250 };
+	string funcStrc = "";
+	for (int i = 0; i < 4; ++i)
+	{
+		char tmpStr[255];
+		sprintf_s(tmpStr, "1e0.*exp(-((%f.*x+%f.*y-%f).^2+(%f.*x+%f.*y-%f).^2)./16000) + ",
+			cosA, -sinA, -xs[i % 2], sinA, cosA, -xs[i / 2]);
+		funcStrc += tmpStr;
+	}
+	funcStrc = funcStrc.substr(0, funcStrc.size() - 3);
+	sprintf_s(funcCStr, funcStrc.c_str());
+#elif defined(DENSITY_FUNC5)
+	double xs[2] = { 200, -200 };
+	string funcStrc = "";
+	for (int i = 0; i < 2; ++i)
+	{
+		char tmpStr[255];
+		sprintf_s(tmpStr, "1e0.*exp(-((%f.*x+%f.*y-%f).^2+(%f.*x+%f.*y-%f).^2)./16000) + ",
+			cosA, -sinA, -xs[i % 2], sinA, cosA, 0.0);
+		funcStrc += tmpStr;
+	}
+	funcStrc = funcStrc.substr(0, funcStrc.size() - 3);
+	sprintf_s(funcCStr, funcStrc.c_str());
 #endif
 	sprintf_s(yMinFuncStrC, "%f.*y+%f", CGAL::to_double(a0), CGAL::to_double(b0));
 	sprintf_s(yMaxFuncStrC, "%f.*y+%f", CGAL::to_double(a1), CGAL::to_double(b1));
@@ -408,6 +442,10 @@ pair<Point_2, double> CCVT2D::CalcTriangleCentroid(const Point_2 &p0, const Poin
 		cosA, -sinA, sinA, cosA);
 #elif defined(DENSITY_FUNC3)
 	sprintf_s(funcCStr, "x");
+#elif defined(DENSITY_FUNC4)
+	sprintf_s(funcCStr, ("(" + funcStrc + ").*x").c_str());
+#elif defined(DENSITY_FUNC5)
+	sprintf_s(funcCStr, ("(" + funcStrc + ").*x").c_str());
 #endif
 
 	funcStr = mwArray(funcCStr); 
@@ -424,6 +462,10 @@ pair<Point_2, double> CCVT2D::CalcTriangleCentroid(const Point_2 &p0, const Poin
 		cosA, -sinA, sinA, cosA);
 #elif defined(DENSITY_FUNC3)
 	sprintf_s(funcCStr, "y");
+#elif defined(DENSITY_FUNC4)
+	sprintf_s(funcCStr, ("(" + funcStrc + ").*y").c_str());
+#elif defined(DENSITY_FUNC5)
+	sprintf_s(funcCStr, ("(" + funcStrc + ").*y").c_str());
 #endif
 	funcStr = mwArray(funcCStr);
 	
@@ -482,8 +524,9 @@ K::FT CCVT2D::CalcCellEnergy(const Point_2 &center, const Polygon_2 &poly)
 		Point_2 center_(cosA * center.x() + sinA * center.y(), -sinA * center.x() + cosA * center.y());
 
 		// integrate
-		K::FT curIntegral = CalcEquation2(center_, ps_[2], ps_[0], ps_[2], ps_[1], ps_[0].y(), ps_[2].y(), 
-			CGAL::to_double(cosA), CGAL::to_double(sinA));
+		K::FT curIntegral = CalcEquation(center_, ps_[2], ps_[0], ps_[2], ps_[1], ps_[0].y(), ps_[2].y());
+// 		K::FT curIntegral = CalcEquation2(center_, ps_[2], ps_[0], ps_[2], ps_[1], ps_[0].y(), ps_[2].y(),
+// 			CGAL::to_double(cosA), CGAL::to_double(sinA));
 		integral += curIntegral > 0.0 ? curIntegral : -curIntegral;
 	}
 
@@ -539,6 +582,32 @@ double CCVT2D::CalcEquation2(const Point_2 &center,
 #elif defined(DENSITY_FUNC3)
 	sprintf_s(funcCStr, "(x-%f).^2+(y-%f).^2",
 		CGAL::to_double(center.x()), CGAL::to_double(center.y()));
+#elif defined(DENSITY_FUNC4)
+	double xs[2] = { 250, -250 };
+	string funcStrc = "";
+	for (int i = 0; i < 4; ++i)
+	{
+		char tmpStr[255];
+		sprintf_s(tmpStr, "1e0.*exp(-((%f.*x+%f.*y-%f).^2+(%f.*x+%f.*y-%f).^2)./16000) + ",
+			cosA, -sinA, -xs[i % 2], sinA, cosA, -xs[i / 2]);
+		funcStrc += tmpStr;
+	}
+	funcStrc = funcStrc.substr(0, funcStrc.size() - 3);
+	funcStrc = "(" + funcStrc + ")" + ".*((x - %f).^2 + (y - %f).^2)";
+	sprintf_s(funcCStr, funcStrc.c_str(), CGAL::to_double(center.x()), CGAL::to_double(center.y()));
+#elif defined(DENSITY_FUNC5)
+	double xs[2] = { 200, -200 };
+	string funcStrc = "";
+	for (int i = 0; i < 2; ++i)
+	{
+		char tmpStr[255];
+		sprintf_s(tmpStr, "1e0.*exp(-((%f.*x+%f.*y-%f).^2+(%f.*x+%f.*y-%f).^2)./16000) + ",
+			cosA, -sinA, -xs[i % 2], sinA, cosA, 0.0);
+		funcStrc += tmpStr;
+	}
+	funcStrc = funcStrc.substr(0, funcStrc.size() - 3);
+	funcStrc = "(" + funcStrc + ")" + ".*((x - %f).^2 + (y - %f).^2)";
+	sprintf_s(funcCStr, funcStrc.c_str(), CGAL::to_double(center.x()), CGAL::to_double(center.y()));
 #endif
 	
 	sprintf_s(yMinFuncStrC, "%f.*y+%f", CGAL::to_double(a0), CGAL::to_double(b0));

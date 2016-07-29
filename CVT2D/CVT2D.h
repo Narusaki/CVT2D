@@ -54,9 +54,11 @@
 #include "mclmcr.h" 
 #include "multiIntegral.h"
 
-#define DENSITY_FUNC1
+/*#define DENSITY_FUNC1*/
  /*#define DENSITY_FUNC2*/
- /*#define DENSITY_FUNC3*/
+ #define DENSITY_FUNC3
+/*#define DENSITY_FUNC4*/
+/*#define DENSITY_FUNC5*/
 
 // typedefs for Voronoi diagram
 typedef CGAL::Exact_predicates_exact_constructions_kernel			K;
@@ -176,4 +178,5 @@ private:
 public:
 	bool isSilent = false;
 	std::vector< Point_2 > generators;
+	int rndSeed;
 };

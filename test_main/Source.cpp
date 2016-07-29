@@ -6,6 +6,7 @@
 
 using namespace std;
 
+int rndSeed = 0;
 template< typename T >
 Line ConstructHalfPlane(T p0, T p1)
 {
@@ -139,7 +140,7 @@ void GenInitGenerators(const Nef_polyhedron& boundaryNef, vector< Point_2 > &gen
 		} while (heIter != heStartIter);
 	}
 
-	default_random_engine gen;
+	default_random_engine gen(rndSeed);
 	uniform_real_distribution<double> distX(xmin, xmax);
 	uniform_real_distribution<double> distY(ymin, ymax);
 	for (int i = 0; i < Ng; ++i)
@@ -168,9 +169,9 @@ void LoadInitGenerator(const char *fileName, vector< Point_2 > &generators)
 
 int main(int argc, char **argv)
 {
-	if (argc < 3)
+	if (argc < 4)
 	{
-		cout << "USAGE: [.exe] [.boundary] [#generator] [initGenerators]" << endl;
+		cout << "USAGE: [.exe] [.boundary] [#generator] [outputDir] [#iter=100] [seed=time(0)] [initGenerators=NULL]" << endl;
 		return -1;
 	}
 	if (!multiIntegralInitialize())
@@ -181,15 +182,7 @@ int main(int argc, char **argv)
 
 	MPI_Init(&argc, &argv);
 
-	string directory;
-	if (argc == 3)
-		directory = ".";
-	else
-	{
-		directory = argv[3];
-		if (directory.find("\\") == string::npos) directory = ".";
-		else directory = directory.substr(0, directory.rfind("\\"));
-	}
+	string directory = argv[3];
 		
 	int processRank;
 	MPI_Comm_rank(MPI_COMM_WORLD, &processRank);
@@ -201,11 +194,13 @@ int main(int argc, char **argv)
 		return -2;
 	}
 	int Ng = stoi(argv[2]);
+	int iterNum = argc < 5 ? 100 : stoi(argv[4]);
 	vector< Point_2 > generators;
-	if (argc == 3)
+	rndSeed = argc < 6 ? time(0) : stoi(argv[5]);
+	if (argc < 7)
 		GenInitGenerators(boundaryNef, generators, Ng);
 	else
-		LoadInitGenerator(argv[3], generators);
+		LoadInitGenerator(argv[6], generators);
 
 	CCVT2D cvt;
 	cvt.isSilent = false;
@@ -213,7 +208,7 @@ int main(int argc, char **argv)
 	cvt.AssignGeneratorNum(Ng);
 	cvt.AssignInitGenerators(generators);
 
-	cvt.SetMaxIteration(100);
+	cvt.SetMaxIteration(iterNum);
 	cvt.SetMinEnergyChange(0.00000);
 	cvt.SetOutputDirectory(directory);
 
